@@ -1,7 +1,7 @@
 //package com.softvan.config;
 //
 //
-//import com.softvan.jwt.JwtTokenFilter;
+//import com.softvan.jwt.JwtFilter;
 //import com.softvan.jwt.JwtTokenProvider;
 //import org.springframework.security.config.annotation.SecurityConfigurerAdapter;
 //import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -23,7 +23,7 @@
 //
 //    @Override
 //    public void configure(HttpSecurity http) throws Exception {
-//        JwtTokenFilter jwtFilter = new JwtTokenFilter(jwtTokenProvider);
+//        JwtFilter jwtFilter = new JwtFilter(jwtTokenProvider);
 //        http.addFilterAfter(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 //    }
 //}

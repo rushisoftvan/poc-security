@@ -2,27 +2,20 @@ package com.softvan.jwt;
 
 import com.softvan.config.SecurityConfig;
 import com.softvan.exception.CustomLoginException;
-import com.softvan.exception.CustomeException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.GenericFilterBean;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
-import javax.security.auth.login.LoginException;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -31,21 +24,22 @@ import static java.util.Arrays.stream;
 
 @Component
 @Slf4j
-public class JwtTokenFilter extends OncePerRequestFilter {
+@RequiredArgsConstructor
+public class JwtFilter extends OncePerRequestFilter {
 
 
-      @Autowired
-      @Qualifier("handlerExceptionResolver")
-    private  HandlerExceptionResolver exceptionResolver;
-    private  JwtTokenProvider jwtTokenProvider;
+
+    @Qualifier("handlerExceptionResolver")
+    private final HandlerExceptionResolver exceptionResolver;
+    private final JwtTokenProvider jwtTokenProvider;
 
     private static final String INVALID_JWT_TOKEN = "Invalid JWT token";
 
 
-    public JwtTokenFilter(JwtTokenProvider jwtTokenProvider) {
-        this.jwtTokenProvider = jwtTokenProvider;
-    }
-//    public JwtTokenFilter(HandlerExceptionResolver exceptionResolver){
+//    public JwtFilter(JwtTokenProvider jwtTokenProvider) {
+//        this.jwtTokenProvider = jwtTokenProvider;
+//    }
+//    public JwtFilter(HandlerExceptionResolver exceptionResolver){
 //        this.exceptionResolver=exceptionResolver;
 //    }
 
@@ -87,52 +81,37 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 //        }
 //    }
 
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-        return stream(SecurityConfig.PUBLIC_URLS)
-                .anyMatch(url -> new AntPathRequestMatcher(url).matches(request));
-    }
+//    @Override
+//    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+//        return stream(SecurityConfig.PUBLIC_URLS)
+//                .anyMatch(url -> new AntPathRequestMatcher(url).matches(request));
+//    }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain filterChain) throws ServletException, IOException {
-        log.info("<<<<<< do filter");
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+        log.info("<<<<<< JwtFilter");
         try {
-            HttpServletResponse response = (HttpServletResponse) res;
-            if (req.getHeader("Authorization") == null) {
+            String token = jwtTokenProvider.resolveToken(request);
+            if (!StringUtils.isBlank(token)){
+                log.info("TOKEN :: {}", token);
 
-                throw new CustomLoginException("please login");
-
-            }
-            ;
-            String token = jwtTokenProvider.resolveToken((HttpServletRequest) req);
-            System.out.println("token = " + token);
-
-            if ((token != null && !token.isEmpty())) {
-                try {
+                if ((token != null && !token.isEmpty())) {
                     jwtTokenProvider.validateToken(token);
-                } catch (JwtException | IllegalArgumentException e) {
-                    e.printStackTrace();
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, INVALID_JWT_TOKEN);
-                    throw new RuntimeException("invalid token");
+                    Authentication authentication = jwtTokenProvider.getAuthentication(token);
+                    log.info("Authentication object :: {}" , authentication);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                    //setHeader(response, jwtTokenProvider.createNewToken(token));
                 }
-
-                Authentication auth = jwtTokenProvider.getAuthentication(token);
-                System.out.println("auth = " + auth);
-                SecurityContextHolder.getContext().setAuthentication(auth);
-
-                //setHeader(response, jwtTokenProvider.createNewToken(token));
             }
 
-            filterChain.doFilter(req, res);
+            filterChain.doFilter(request, response);
 
-        } catch (CustomLoginException customLoginException) {
-            log.error("Spring Security Filter Chain Exception: {}", customLoginException);
-            exceptionResolver.resolveException(req, res, null, customLoginException);
-            //this.exceptionResolver.resolveException(req, res, null, customLoginException);
-        }
-         catch (Exception e) {
-            log.error("error : {}", e);
-            throw e;
+            log.info("JwtFilter >>>>>>");
+
+        } catch (JwtException ex) {
+            exceptionResolver.resolveException(request,response, null , ex);
         }
     }
 

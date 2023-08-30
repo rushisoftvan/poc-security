@@ -1,36 +1,34 @@
 package com.softvan.config;
 
 
-import com.softvan.jwt.JwtTokenFilter;
+import com.softvan.jwt.JwtFilter;
 import com.softvan.jwt.JwtTokenFilterConfigurer;
 import com.softvan.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
-@EnableWebSecurity
-@EnableGlobalMethodSecurity(prePostEnabled = true)
+//@EnableWebSecurity
+//@EnableGlobalMethodSecurity(prePostEnabled = true)
+@EnableMethodSecurity
 @RequiredArgsConstructor
-public class    SecurityConfig {
-
-
-    private final AccessDeniedHandler accessDeniedHandler;
-   private final JwtTokenProvider jwtProvider;
-
-
-
-    private final JwtTokenFilter jwtFilter;
+public class SecurityConfig {
 
     private final AuthenticationEntryPoint authenticationEntryPoint;
+
+//    private final JwtTokenFilterConfigurer jwtTokenFilterConfigurer;
+
+    private final AccessDeniedHandler accessDeniedHandler;
+
+    private final JwtFilter jwtFilter;
 
     public static String[] PUBLIC_URLS = {
             "/login"
@@ -47,9 +45,6 @@ public class    SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
 
-
-
-
         /**
          * Need to disable csrf otherwise we will get 403 or 401
          * on public POST types urls
@@ -57,7 +52,7 @@ public class    SecurityConfig {
         http
                 .csrf()
                 .disable();
-        http.cors();
+//        http.cors();
         http.authorizeRequests()
                 .antMatchers(PUBLIC_URLS).permitAll()
 //                .antMatchers("/m1").hasAuthority("ADMIN")
@@ -66,14 +61,15 @@ public class    SecurityConfig {
                 .sessionManagement()
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS);
 
-                //.addFilterBefore(new JwtTokenFilter(jwtProvider), UsernamePasswordAuthenticationFilter.class)
+        //.addFilterBefore(new JwtFilter(jwtProvider), UsernamePasswordAuthenticationFilter.class)
 
         /**
          * We have to set this authenticationEntryPoint otherwise we will get 403 instead of 401 if login cred invalid
          */
 
         http.exceptionHandling()
-        .accessDeniedHandler(accessDeniedHandler);
+                .authenticationEntryPoint(authenticationEntryPoint)
+                .accessDeniedHandler(accessDeniedHandler);
 
         /**
          * JwtFilter -> UsernamePasswordAuthenticationFilter
@@ -81,8 +77,9 @@ public class    SecurityConfig {
          */
 
         //.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
-        http.apply(new JwtTokenFilterConfigurer(jwtProvider));
+//        http.apply(jwtTokenFilterConfigurer);
 
+        http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

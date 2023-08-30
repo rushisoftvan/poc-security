@@ -18,7 +18,8 @@ import java.io.IOException;
 public class AccessDeniedHandlerImpl implements AccessDeniedHandler {
     private final HandlerExceptionResolver handlerExceptionResolver;
     @Override
-    public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException) throws IOException, ServletException {
+    public void handle(HttpServletRequest request, HttpServletResponse response,
+                       AccessDeniedException accessDeniedException) throws IOException, ServletException {
         response.addHeader("WWW-Authenticate","Basic realm=\"Realm\"");
         log.info("<<<<<<<<<<<<<AccessDeniedHandlerImpl");
         this.handlerExceptionResolver.resolveException(request,response,null,accessDeniedException);
